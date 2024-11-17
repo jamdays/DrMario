@@ -24,9 +24,11 @@ ADDR_DSPL:
 # The address of the keyboard. Don't forget to connect it!
 ADDR_KBRD:
     .word 0xffff0000
-purple: .word 0x8d07e0
+bottle_color: .word 0x97bdcc
 blue: .word 0x362880
 pink: .word 0xd67ca9
+orange: .word 0xe6962e
+white: .word 0xffffff
 ##############################################################################
 # Mutable Data
 ##############################################################################
@@ -44,24 +46,37 @@ main:
     # Initialize the game
     # set parameters to draw a purple horizontal line    
     lw $a0, ADDR_DSPL
-    addi $a0, $a0, 3448 # 256*13 + 4*30
-    li $a1, 3
-    lw $a2, purple
+    addi $a0, $a0, 7792 # 256*30 + 4*28
+    li $a1,2
+    lw $a2, bottle_color
     jal draw_down
-    li $a1, 5
-    jal draw_left
-    li $a1, 20
-    jal draw_down
-    li $a1, 14
+    li $a1, 1
     jal draw_right
-    li $a1, 20
-    jal draw_up
-    li $a1, 5
+    li $a1, 1
+    jal draw_down
+    li $a1, 3
     jal draw_left
-    li $a1, 4
-    jal draw_up	
+    li $a1, 18
+    jal draw_down
+    li $a1, 9
+    jal draw_right
+    li $a1, 18
+    jal draw_up
+    li $a1, 3
+    jal draw_left
+    li $a1, 1
+    jal draw_up
+    li $a1, 1
+    jal draw_right
+    li $a1, 3
+    jal draw_up
+    lw $a0, ADDR_DSPL
+    addi $a0, $a0, 8568 # 256*30 + 4*30
+    addi $a1, $a0, 4
     
-
+    jal draw_pill_ow   	
+    
+    
 game_loop:
     # 1a. Check if key has been pressed
     # 1b. Check which key has been pressed
@@ -73,7 +88,7 @@ game_loop:
     # 5. Go back to Step 1
     j game_loop
 
-#lines 64 - 89 for drawing lines
+#lines 64 - 89 for drawing lines (USES t0, t1)
 # $a0, starting register
 # $a1, length of line
 # $a2, color
@@ -88,10 +103,10 @@ draw_right:
 # $a1, length of line
 # $a2, color
 draw_down:
-	sll $t0, $a1, 8 #multiply $a1 by 256 (sll 8) for branch condition
+	sll $t0, $a1, 8 # multiply $a1 by 256 (sll 8) for branch condition
 	add $t1, $a0, $t0 # add to find the ending register
-	li $a1, 256 #draw_pixels will update register by 256 (a1 is not needed anymore)
-	j draw_pixels #loop
+	li $a1, 256  # draw_pixels will update register by 256 (a1 is not needed anymore)
+	j draw_pixels # loop
 
 # $a0, starting register
 # $a1, length of line
@@ -118,6 +133,28 @@ draw_pixels: #loop
 	sw $a2, ($a0) #put color in register
 	add $a0, $a0, $a1 #update register to be drawn
 j draw_pixels
+
+# $a0, location of first half
+# $a1, location of second half
+# uses $t0
+draw_pill_pw:
+	lw $t0, pink
+	sw $t0, ($a0)
+	lw $t0, white
+	sw $t0, ($a1)
+	j end_function
+draw_pill_ow:
+	lw $t0, orange
+	sw $t0, ($a0)
+	lw $t0, white
+	sw $t0, ($a1)
+	j end_function
+draw_pill_po:
+	lw $t0, pink
+	sw $t0, ($a0)
+	lw $t0, orange
+	sw $t0, ($a1)
+	j end_function
 
 end_function: #end function general
 jr $ra
