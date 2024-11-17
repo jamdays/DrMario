@@ -42,17 +42,24 @@ pink: .word 0xd67ca9
     # Run the game.
 main:
     # Initialize the game
-    # set parameters to draw a purple horizontal line
+    # set parameters to draw a purple horizontal line    
     lw $a0, ADDR_DSPL
-    addi $a0, $a0, 2680 # 256*10 + 4*30
-    li $a1, 5 
+    addi $a0, $a0, 3448 # 256*13 + 4*30
+    li $a1, 3
     lw $a2, purple
-    jal draw_vertical
-    addi $a0, (ADDR_DSPL), 2696 # 256*10 + 4*34
-    li $a1, 5 
-    lw $a2, purple
-    jal draw_vertical   
-    #     
+    jal draw_down
+    li $a1, 5
+    jal draw_left
+    li $a1, 20
+    jal draw_down
+    li $a1, 14
+    jal draw_right
+    li $a1, 20
+    jal draw_up
+    li $a1, 5
+    jal draw_left
+    li $a1, 4
+    jal draw_up	
     
 
 game_loop:
@@ -70,7 +77,7 @@ game_loop:
 # $a0, starting register
 # $a1, length of line
 # $a2, color
-draw_horizontal:
+draw_right:
 	sll $t0, $a1, 2  #multiply $a1 by 4 (sll 2) for branch condition
 	add $t1, $a0, $t0 #add to find ending register 
 	li, $a1, 4 #draw_pixels will update register by 4 (a1 is not needed anymore)
@@ -80,10 +87,29 @@ draw_horizontal:
 # $a0, starting register
 # $a1, length of line
 # $a2, color
-draw_vertical:
+draw_down:
 	sll $t0, $a1, 8 #multiply $a1 by 256 (sll 8) for branch condition
 	add $t1, $a0, $t0 # add to find the ending register
 	li $a1, 256 #draw_pixels will update register by 256 (a1 is not needed anymore)
+	j draw_pixels #loop
+
+# $a0, starting register
+# $a1, length of line
+# $a2, color
+draw_left:
+	sll $t0, $a1, 2  #multiply $a1 by 4 (sll 2) for branch condition
+	sub $t1, $a0, $t0 #add to find ending register 
+	li, $a1, -4 #draw_pixels will update register by 4 (a1 is not needed anymore)
+	j draw_pixels
+	
+
+# $a0, starting register
+# $a1, length of line
+# $a2, color
+draw_up:
+	sll $t0, $a1, 8 #multiply $a1 by 256 (sll 8) for branch condition
+        sub $t1, $a0, $t0 # add to find the ending register
+	li $a1, -256 #draw_pixels will update register by 256 (a1 is not needed anymore)
 	j draw_pixels #loop
 	
 # $a1, how much to update the register by
@@ -95,5 +121,3 @@ j draw_pixels
 
 end_function: #end function general
 jr $ra
-
-	
