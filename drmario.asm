@@ -38,18 +38,20 @@ pink: .word 0xd67ca9
 	.globl main
 
 
-lw $t1 , purple # $ t 1 = r e d
-lw $t2 , blue  # $ t 2 = g r e e n
-lw $t3 , pink # $ t 3 = b l u e
-lw $t0 , ADDR_DSPL # $ t 0 = b a s e a d d r e s s f o r d i s p l a y
-sw $t1, 0 ($t0) # p a i n t t h e f i r s t u n i t ( i . e . , top− l e f t ) r e d
-sw $t2 , 4 ($t0) # p a i n t t h e s e c o n d u n i t on t h e f i r s t row g r e e n
-sw $t3 , 128 ($t0) # p a i n t t h e f i r s t u n i t on t h e s e c o n d row b l u e
 # . . .
     # Run the game.
 main:
     # Initialize the game
-    # set parameters to draw a gray vertical line  
+    # set parameters to draw a purple horizontal line
+    lw $a0, ADDR_DSPL
+    addi $a0, $a0, 2680 # 256*10 + 4*30
+    li $a1, 5 
+    lw $a2, purple
+    jal draw_vertical
+    addi $a0, (ADDR_DSPL), 2696 # 256*10 + 4*34
+    li $a1, 5 
+    lw $a2, purple
+    jal draw_vertical   
     #     
     
 
@@ -64,27 +66,34 @@ game_loop:
     # 5. Go back to Step 1
     j game_loop
 
-
+#lines 64 - 89 for drawing lines
 # $a0, starting register
 # $a1, length of line
 # $a2, color
 draw_horizontal:
-	sll $t0, $a1, 10  #multiply $a1 by 4 (sll 2) for branch condition
+	sll $t0, $a1, 2  #multiply $a1 by 4 (sll 2) for branch condition
+	add $t1, $a0, $t0 #add to find ending register 
+	li, $a1, 4 #draw_pixels will update register by 4 (a1 is not needed anymore)
+	j draw_pixels
 	
-	draw_pixel: #loop
-	beq $t1, #end loop if register = starting register + 4*a1
-	#update register to be drawn
-	#put color in register
-jr $ra
-
 
 # $a0, starting register
 # $a1, length of line
 # $a2, color
 draw_vertical:
-	#multiply $a1 by 512 (sll 9) for branch condition
-	#loop
-	#end loop if register = starting register + 512*length of line
-	#update register to be drawn
-	#put color in register
+	sll $t0, $a1, 8 #multiply $a1 by 256 (sll 8) for branch condition
+	add $t1, $a0, $t0 # add to find the ending register
+	li $a1, 256 #draw_pixels will update register by 256 (a1 is not needed anymore)
+	j draw_pixels #loop
+	
+# $a1, how much to update the register by
+draw_pixels: #loop
+	beq $t1, $a0, end_function  #end loop if register = starting register + 4*a1
+	sw $a2, ($a0) #put color in register
+	add $a0, $a0, $a1 #update register to be drawn
+j draw_pixels
+
+end_function: #end function general
 jr $ra
+
+	
