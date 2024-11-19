@@ -364,7 +364,7 @@ draw_viruses:
     	syscall
     	sll $t2, $a0, 8		#mult by 256 and store at t2
     	add $t2, $t2, $t0
-    	addi $t2, $t2, 8808
+    	addi $t2, $t2, 9832 	#corner of jar (8808) + 4*256
     	lw $t3, ADDR_DSPL
     	add $t2, $t2, $t3
     	lw  $t3, ($t2)
@@ -382,7 +382,7 @@ draw_viruses:
 # $a3, the other color
 #uses t0
 draw_pill:
-	lw $t0, ($a0)
+	lw $t0, ($a0) #quit if there is color at either a0 or a1 
 	bnez $t0, quit
 	lw $t1, ($a0)
 	bnez $t0, quit
