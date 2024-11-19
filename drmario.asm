@@ -380,7 +380,12 @@ draw_viruses:
 # $a1, location of second half
 # $a2, the color
 # $a3, the other color
+#uses t0
 draw_pill:
+	lw $t0, ($a0)
+	bnez $t0, quit
+	lw $t1, ($a0)
+	bnez $t0, quit
 	sw $a2, ($a0)
 	sw $a3, ($a1)
 	
