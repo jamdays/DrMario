@@ -114,6 +114,9 @@ game_loop:
     lw $t0, ADDR_DSPL
     addi $a0, $t0, 12908 #top left corner of jar (8808) + 15*256 = 12648 (bottom left corner)
     jal check_row
+    lw $t0, ADDR_DSPL
+    addi $a0, $t0, 8812 #top left corner of jar (8812)
+    jal check_col
     j game_loop
     
 keyboard_input:
@@ -394,11 +397,38 @@ check_row:
 	la $a0, ($t3)
 	j check_row
 	clear_row:
+	beq $t2, $t1, c_row #loop it again if the next color is the same
 	addi $t3, $t3, -4 #update location to be cleared
 	addi $t0, $t0, -1 #decrement counter
 	li $t4, 0 #load in black
 	sw $t4, ($t3) #store black
 	bgtz $t0, clear_row
+	j end_function
+
+
+#$a0 is the spot     	
+check_col:
+	li $t0, 0	#initialize counter
+	lw $t1, ($a0)
+	la $t3, ($a0)
+	c_col:		#consecutive colors in a row counter
+	addi $t0, $t0, 1
+	add $t3, $t3, 256
+	lw $t2, ($t3)
+	bge $t0, 4, clear_col
+	beq $t2, 0x97bdcc, end_function	#if the next guy is the wall then end function
+	beqz $t1, move_on_check_col #if the next color is 0 move on
+	beq $t2, $t1, c_col #loop it again if the next color is the same
+	move_on_check_col:
+	la $a0, ($t3)
+	j check_col
+	clear_col:
+	beq $t2, $t1, c_col #loop it again if the next color is the same
+	addi $t3, $t3, -256 #update location to be cleared
+	addi $t0, $t0, -1 #decrement counter
+	li $t4, 0 #load in black
+	sw $t4, ($t3) #store black
+	bgtz $t0, clear_col
 	j end_function
 	
 	
