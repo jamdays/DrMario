@@ -110,7 +110,10 @@ game_loop:
 	# 3. Draw the screen
 	# 4. Sleep
 
-    # 5. Go back to Step 1
+    # 5. Go back to Step
+    lw $t0, ADDR_DSPL
+    addi $a0, $t0, 12908 #top left corner of jar (8808) + 15*256 = 12648 (bottom left corner)
+    jal check_row
     j game_loop
     
 keyboard_input:
@@ -373,8 +376,32 @@ draw_viruses:
     	addi $a2, $a2, -1
     	bnez $a2 draw_viruses
     	j end_function    	
-    	
-    	
+
+#$a0 is the spot     	
+check_row:
+	li $t0, 0	#initialize counter
+	lw $t1, ($a0)
+	la $t3, ($a0)
+	c_row:		#consecutive colors in a row counter
+	addi $t0, $t0, 1
+	add $t3, $t3, 4
+	lw $t2, ($t3)
+	bge $t0, 4, clear_row
+	beq $t2, 0x97bdcc, end_function	#if the next guy is the wall then end function
+	beqz $t1, move_on_check_row #if the next color is 0 move on
+	beq $t2, $t1, c_row #loop it again if the next color is the same
+	move_on_check_row:
+	la $a0, ($t3)
+	j check_row
+	clear_row:
+	addi $t3, $t3, -4 #update location to be cleared
+	addi $t0, $t0, -1 #decrement counter
+	li $t4, 0 #load in black
+	sw $t4, ($t3) #store black
+	bgtz $t0, clear_row
+	j end_function
+	
+	
 	
 # $a0, location of first half
 # $a1, location of second half
