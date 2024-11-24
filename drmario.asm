@@ -296,7 +296,6 @@ collided_down:
 	sw  $t2, board($t0)
 	sw $t0, board($t2) 
 	
-	lw $t0, ispill
  	bnez $t0, clear_blocks
  	beqz $t0, drop_blocks
 	j game_loop
@@ -371,10 +370,10 @@ draw_pixels: #loop
 	beq $t1, $a0, end_function  #end loop if register = starting register + 4*a1
 	
 	#re index so that $t2 has the address in terms of the board
-	lw $t2, ADDR_DSPL 
-	sub $t2, $a0, $t2
-	lw $t3, board
-	add $t2, $t3, $t2
+	#lw $t2, ADDR_DSPL 
+	#sub $t2, $a0, $t2
+	#lw $t3, board
+	#add $t2, $t3, $t2
 	#li $t3, -1
 	
 	#sw $t3, ($t2) #put -1 at board register 
@@ -383,6 +382,8 @@ draw_pixels: #loop
 j draw_pixels
 
 new_pill:
+    li $t0, 1
+    sw $t0, ispill
     li $v0, 42 #generate random number for color
     li $a0, 0
     li $a1, 3
@@ -495,13 +496,33 @@ check_col:
 # check all blocks in board and drops any that can be dropped (bottom up)
 # go thru all the rows
 # each pill you see drop it until it collides
-# gg
+# gg (CAN ONLY USE $t6-t9, because everything elese is used in down)
 drop_blocks:
-	li $t0, 0	#initialize counter
-	d_row:		
-	addi $t0, $t0, 1
-	add $t3, $t3, 4
-	j new_pill
+	li $t9, 16	#initialize counter
+	li $t7, 13164 #12908 + 256
+	d_row:
+	addi $t7, $t7, -256		
+	addi $t9, $t9, -1
+	li $t8, 8
+	d_col:
+		addi $t8, $t8, -1
+		lw  $t0, board($t7)
+		lw $t1, board($t0)
+		lw $t3, ADDR_DSPL
+		add $t2, $t0, $t3
+		add $t1, $t1, $t3
+		sw $zero, board($t0)
+		sw $zero, board($t7)
+		sw $t2, pill #load  pill with address at board(board(t8)) indexed by dspl
+		sw $t1, pill+4 #load pill+4 with (t8) indexed by DSPL
+		addi $t7, $t7, 4
+	beqz, $t9, clear_blocks
+	beqz, $t8, d_row
+	#also change the guy to 0
+	li $t4, 0
+	sw $t4, ispill
+	bnez, $t0, down
+	
 	
 	
 		
