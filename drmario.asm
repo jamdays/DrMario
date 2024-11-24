@@ -32,7 +32,11 @@ white: .word 0xffffff
 colors: .word 0xff8ad4, 0xffb152, 0xffffff
 viruses: .word 0xee79c3, 0xeea041, 0xeeeeee
 pill:.space 8
+pill_storage: .space 8 #stores pill for when dropping
 rotati:  .word 252
+board: .space 16834
+ispill:  .word 1 #if this is 1 we are dropping the pill (otherwise something is dropping cause of connect)
+
 ##############################################################################
 # Mutable Data
 ##############################################################################
@@ -111,12 +115,12 @@ game_loop:
 	# 4. Sleep
 
     # 5. Go back to Step
-    lw $t0, ADDR_DSPL
-    addi $a0, $t0, 12908 #top left corner of jar (8808) + 15*256 = 12648 (bottom left corner)
-    jal check_row
-    lw $t0, ADDR_DSPL
-    addi $a0, $t0, 8812 #top left corner of jar (8812)
-    jal check_col
+    #lw $t0, ADDR_DSPL
+    #addi $a0, $t0, 12908 #top left corner of jar (8812) + 16*256 = 12908 (bottom left corner)
+    #jal check_row
+    #lw $t0, ADDR_DSPL
+    #addi $a0, $t0, 8812 #top left corner of jar (8812)
+    #jal check_col
     j game_loop
     
 keyboard_input:
@@ -172,9 +176,9 @@ down:
 	addi $t2, $t2, 256
 	#check collision
 	lw $t5, ($t0) #get color at new $t0
-	bne $t5, $zero collided_down
+	bnez $t5, collided_down
 	lw $t5, ($t2) #get color at new $t2  
-	bne $t5, $zero collided_down
+	bnez $t5, collided_down
 	
 	#sets new colors
 	sw $t1, ($t0)
@@ -183,7 +187,10 @@ down:
 	#stores new location in pill array 
 	sw $t0, pill
 	sw $t2, pill+4
-	j game_loop
+	lw $t0, ispill
+	bnez $t0, game_loop
+	beqz $t0, down
+	
 #uses t0-t4
 right:
 	lw $t0, pill #gets the location of one half of the pill
@@ -275,8 +282,50 @@ collided_down:
 	addi $t2, $t2, -256
 	sw $t1, ($t0)
 	sw $t3, ($t2)
-	j new_pill
+	
+	#re index so that $t0 has the address in terms of the board
+	lw $t1, ADDR_DSPL
+	lw $t3, board 
+	sub $t0, $t0, $t1
+	#add $t0, $t3, $t0
+	# re index so that $t2 has the other address in terms of the board
+	sub $t2, $t2, $t1
+	#add $t2, $t3, $t2
+	 
+	#store $t0 at t2 and t2 at t0
+	sw  $t2, board($t0)
+	sw $t0, board($t2) 
+	
+	lw $t0, ispill
+ 	bnez $t0, clear_blocks
+ 	beqz $t0, drop_blocks
 	j game_loop
+	
+clear_blocks:
+	#clear rows, and columns, then call drop_blocks if $v0 is not 0 (meaning it cleared something)
+	li $v0, 0
+	li $t5, 16
+	lw $t6, ADDR_DSPL
+	addi $t6, $t6, 12908
+	c_rows: #remeber you named something c_row (and it uses t0-t4) 
+	addi $t5, $t5, -1
+	la $a0, ($t6)
+	jal check_row
+	addi $t6, $t6, -256
+	bnez $t5, c_rows
+	li $t5, 8
+	lw $t6, ADDR_DSPL
+	addi $t6, $t6, 8812
+	c_cols: # remember you named something c_col
+	addi $t5, $t5, -1
+	la $a0, ($t6)
+	jal check_col
+	addi $t6, $t6, 4
+	bnez $t5, c_cols
+	bnez $v0, drop_blocks
+	j new_pill
+
+	
 	
 #lines 64 - 89 for drawing lines (USES t0, t1)
 # $a0, starting register
@@ -320,6 +369,15 @@ draw_up:
 # $a1, how much to update the register by
 draw_pixels: #loop
 	beq $t1, $a0, end_function  #end loop if register = starting register + 4*a1
+	
+	#re index so that $t2 has the address in terms of the board
+	lw $t2, ADDR_DSPL 
+	sub $t2, $a0, $t2
+	lw $t3, board
+	add $t2, $t3, $t2
+	#li $t3, -1
+	
+	#sw $t3, ($t2) #put -1 at board register 
 	sw $a2, ($a0) #put color in register
 	add $a0, $a0, $a1 #update register to be drawn
 j draw_pixels
@@ -397,6 +455,7 @@ check_row:
 	la $a0, ($t3)
 	j check_row
 	clear_row:
+	li $v0, 1
 	beq $t2, $t1, c_row #loop it again if the next color is the same
 	addi $t3, $t3, -4 #update location to be cleared
 	addi $t0, $t0, -1 #decrement counter
@@ -423,6 +482,7 @@ check_col:
 	la $a0, ($t3)
 	j check_col
 	clear_col:
+	li $v0, 1
 	beq $t2, $t1, c_col #loop it again if the next color is the same
 	addi $t3, $t3, -256 #update location to be cleared
 	addi $t0, $t0, -1 #decrement counter
@@ -430,7 +490,21 @@ check_col:
 	sw $t4, ($t3) #store black
 	bgtz $t0, clear_col
 	j end_function
+
+
+# check all blocks in board and drops any that can be dropped (bottom up)
+# go thru all the rows
+# each pill you see drop it until it collides
+# gg
+drop_blocks:
+	li $t0, 0	#initialize counter
+	d_row:		
+	addi $t0, $t0, 1
+	add $t3, $t3, 4
+	j new_pill
 	
+	
+		
 	
 	
 # $a0, location of first half
@@ -440,7 +514,7 @@ check_col:
 #uses t0
 draw_pill:
 	lw $t0, ($a0) #quit if there is color at either a0 or a1 
-	bnez $t0, quit
+	bnez $t0, quit  
 	lw $t1, ($a0)
 	bnez $t0, quit
 	sw $a2, ($a0)
