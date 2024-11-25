@@ -33,6 +33,7 @@ colors: .word 0xff8ad4, 0xffb152, 0xffffff
 viruses: .word 0xee79c3, 0xeea041, 0xeeeeee
 pill:.space 8
 ispill: .word 1 #if this is 1 we are dropping the pill (otherwise something is dropping cause of connect)
+gameloop: .word 0
 rotati:  .word 252
 board: .space 16834
 
@@ -182,14 +183,15 @@ down:
 	#sets new colors
 	sw $t1, ($t0)
 	sw $t3, ($t2)
-	li $v0 , 32
-	li $a0 , 250
-	syscall
+
 	#stores new location in pill array 
 	sw $t0, pill
 	sw $t2, pill+4
 	lw $t0, ispill
 	bnez $t0, game_loop
+	li $v0 , 32
+	li $a0 , 250
+	syscall
 	beqz $t0, down
 	
 #uses t0-t4
