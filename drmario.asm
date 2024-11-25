@@ -32,10 +32,9 @@ white: .word 0xffffff
 colors: .word 0xff8ad4, 0xffb152, 0xffffff
 viruses: .word 0xee79c3, 0xeea041, 0xeeeeee
 pill:.space 8
-pill_storage: .space 8 #stores pill for when dropping
+ispill: .word 1 #if this is 1 we are dropping the pill (otherwise something is dropping cause of connect)
 rotati:  .word 252
 board: .space 16834
-ispill:  .word 1 #if this is 1 we are dropping the pill (otherwise something is dropping cause of connect)
 
 ##############################################################################
 # Mutable Data
@@ -52,7 +51,7 @@ ispill:  .word 1 #if this is 1 we are dropping the pill (otherwise something is 
     # Run the game.
 main:
     # Initialize the game
-    # set parameters to draw a botte 
+    # set parameters to draw a bottle
     lw $a0, ADDR_DSPL
     addi $a0, $a0, 7792 # 256*30 + 4*28, (corner of bottle is 7792 - 4*2 + 256*4) (8808)
     li $a1,2
@@ -183,7 +182,9 @@ down:
 	#sets new colors
 	sw $t1, ($t0)
 	sw $t3, ($t2)
-	
+	li $v0 , 32
+	li $a0 , 250
+	syscall
 	#stores new location in pill array 
 	sw $t0, pill
 	sw $t2, pill+4
@@ -296,8 +297,9 @@ collided_down:
 	sw  $t2, board($t0)
 	sw $t0, board($t2) 
 	
+	lw $t0, ispill
  	bnez $t0, clear_blocks
- 	beqz $t0, drop_blocks
+ 	beqz $t0, d_col
 	j game_loop
 	
 clear_blocks:
@@ -306,7 +308,7 @@ clear_blocks:
 	li $t5, 16
 	lw $t6, ADDR_DSPL
 	addi $t6, $t6, 12908
-	c_rows: #remeber you named something c_row (and it uses t0-t4) 
+	c_rows: #remeber you named something c_row (and it uses t0-t4 & t7) 
 	addi $t5, $t5, -1
 	la $a0, ($t6)
 	jal check_row
@@ -460,8 +462,13 @@ check_row:
 	beq $t2, $t1, c_row #loop it again if the next color is the same
 	addi $t3, $t3, -4 #update location to be cleared
 	addi $t0, $t0, -1 #decrement counter
-	li $t4, 0 #load in black
-	sw $t4, ($t3) #store black
+	sw $zero, ($t3) #store black
+	#store zero in pill array and route little guy to itself if it points to something
+	lw $t4, ADDR_DSPL
+	sub $t7, $t3, $t4
+	lw $t4, board($t7)
+	sw $t4, board($t4)
+	sw $zero, board($t7)
 	bgtz $t0, clear_row
 	j end_function
 
@@ -487,8 +494,13 @@ check_col:
 	beq $t2, $t1, c_col #loop it again if the next color is the same
 	addi $t3, $t3, -256 #update location to be cleared
 	addi $t0, $t0, -1 #decrement counter
-	li $t4, 0 #load in black
-	sw $t4, ($t3) #store black
+	sw $zero, ($t3) #store black
+	#store zero in pill array and route little guy to itself if it points to something
+	lw $t4, ADDR_DSPL
+	sub $t7, $t3, $t4
+	lw $t4, board($t7)
+	sw $t4, board($t4)
+	sw $zero, board($t7)
 	bgtz $t0, clear_col
 	j end_function
 
@@ -498,13 +510,14 @@ check_col:
 # each pill you see drop it until it collides
 # gg (CAN ONLY USE $t6-t9, because everything elese is used in down)
 drop_blocks:
-	li $t9, 16	#initialize counter
-	li $t7, 13164 #12908 + 256
-	d_row:
-	addi $t7, $t7, -256		
+	li $t9, 17	#initialize counter
+	li $t7, 13196 #12908 + 288
+	d_row:		
+	addi $t7, $t7, -288 # -256 - 32
 	addi $t9, $t9, -1
 	li $t8, 8
 	d_col:
+	blez, $t8, d_row
 		addi $t8, $t8, -1
 		lw  $t0, board($t7)
 		lw $t1, board($t0)
@@ -516,12 +529,11 @@ drop_blocks:
 		sw $t2, pill #load  pill with address at board(board(t8)) indexed by dspl
 		sw $t1, pill+4 #load pill+4 with (t8) indexed by DSPL
 		addi $t7, $t7, 4
-	beqz, $t9, clear_blocks
-	beqz, $t8, d_row
+	blez, $t9, clear_blocks
 	#also change the guy to 0
-	li $t4, 0
-	sw $t4, ispill
+	sw $zero, ispill
 	bnez, $t0, down
+	j d_col
 	
 	
 	
