@@ -35,9 +35,29 @@ pill:.space 8
 nextpill: .space 8
 savedpill: .space 8
 ispill: .word 1 #if this is 1 we are dropping the pill (otherwise something is dropping cause of connect)
+kept: .word 0 #this is to check if a pill has already been kept
 loops: .word 60
 rotati:  .word 252
 board: .space 16834
+gameover: .word 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1,
+		1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0,
+		1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1,
+		1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0,
+		1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1,
+		1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1,
+		1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1,
+		1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0,
+		1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1
+
+paused: .word 	1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0,
+		1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1,
+		1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1,
+		1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1,
+		1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0,
+		
+		  
 
 ##############################################################################
 # Mutable Data
@@ -175,9 +195,78 @@ keyboard_input:
     beq $a0, 115, down 		#if s pressed
     beq $a0, 100, right 	#if d pressed
     beq $a0, 119, rotate 	#if w pressed
+    beq $a0, 99, keep
+    beq $a0, 112, show_pause
     #li $v0, 1                   # ask system to print $a0
     #syscall
     j game_loop
+show_pause:
+     lw $a0, ADDR_DSPL # $a0, where to draw (MAKE SURE ARRAY IS A RECTANGLE)
+     addi $a0, $a0, 1368
+     la $a1, paused # $a1, memory location of array
+     li $a2, 29 # $a2, width of array
+     li $a3, 145 # $a3, length of array
+     li $v0, 0 # $v0, output for "recursion"	
+     li $v1, 0xffffff
+    jal draw_array
+    j pause
+pause:
+    lw $t0, ADDR_KBRD               # $t0 = base address for keyboard
+    lw $t8, 0($t0)                  # Load first word from keyboard
+    bne $t8, 1, pause       # If first word 1, key is pressed
+    lw $a0, 4($t0)              # Load second word from keyboard
+    bne $a0, 112, pause
+    lw $a0, ADDR_DSPL # $a0, where to draw (MAKE SURE ARRAY IS A RECTANGLE)
+    addi $a0, $a0, 1368
+    la $a1, paused # $a1, memory location of array
+    li $a2, 29 # $a2, width of array
+    li $a3, 145 # $a3, length of array
+    li $v0, 0 # $v0, output for "recursion"
+    li $v1, 0	
+    jal draw_array
+    j game_loop
+    
+	
+keep:
+    lw $t0, kept
+    bnez $t0, game_loop
+    lw $t0, savedpill
+    lw $t4, ($t0)
+    bnez $t4, keep_withpill
+    lw $t1, pill
+    lw $t3, ($t1)
+    sw $t3, ($t0)
+    sw $zero, ($t1)
+    lw $t1, pill+4
+    lw $t3, ($t1)
+    sw $t3, 4($t0)
+    sw $zero, ($t1)
+    li $t0, 252
+    sw $t0, rotati
+    j new_pill  
+    keep_withpill:
+    lw $t5, ADDR_DSPL
+    lw $t1, pill
+    lw $t3, ($t1)
+    sw $t4, 8568($t5)
+    sw $t3, ($t0)
+    sw $zero, ($t1)
+    addi $t5, $t5, 8568
+    sw $t5, pill
+    lw $t1, pill+4
+    lw $t4, 4($t0)
+    lw $t3, ($t1)
+    sw $t4, 4($t5)
+    sw $t3, 4($t0)
+    sw $zero, ($t1)
+    addi $t5, $t5, 4
+    sw $t5, pill+4
+    li $t0, 1
+    sw $t0, kept
+    li $t0, 252
+    sw $t0, rotati
+    j game_loop
+    
 #uses $t0-$t4
 left:
 	lw $t0, pill #gets the location of one half of the pill
@@ -409,6 +498,7 @@ draw_pixels: #loop
 j draw_pixels
 
 new_pill:
+    sw $zero, kept
     li $t0, 1
     sw $t0, ispill
     lw $t0, nextpill
@@ -542,7 +632,7 @@ check_col:
 # each pill you see drop it until it collides
 # gg (CAN ONLY USE $t6-t9, because everything elese is used in down)
 drop_blocks:
-	li $t9, 17	#initialize counter
+	li $t9, 20	#initialize counter doesnt matter that it is 20 cause it just checks empty stuff after so fine to overshoot
 	li $t7, 13196 #12908 + 288
 	d_row:		
 	addi $t7, $t7, -288 # -256 - 32
@@ -567,6 +657,31 @@ drop_blocks:
 	bnez, $t0, down
 	j d_col
 
+# $a0, where to draw (MAKE SURE ARRAY IS A RECTANGLE)
+# $a1, memory location of array
+# $a2, width of array
+# $a3, length of array
+# $v0, output for "recursion"
+# $v1, cursed af but this is the color
+draw_array:
+	addi $a3, $a3, -1
+	lw $t0, ($a1)
+	beqz $t0, da_continue
+	la $t0, ($v1)
+	da_continue:
+	sw $t0, ($a0)
+	addi $a1, $a1, 4
+	addi $a0, $a0, 4
+	addi $v0, $v0, 1
+	beqz $a3, end_function
+	bne $v0, $a2, draw_array
+	li $v0, 0
+	sll $t0, $a2, 2
+	addi $a0, $a0, 256
+	sub $a0, $a0, $t0
+	bnez $a3, draw_array
+	jr $ra
+	
 # $a0, location of first half
 # $a1, location of second half
 # $a2, the color

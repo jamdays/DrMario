@@ -1,10 +1,12 @@
-Save Capsule
-Preview one capsule
-Preview four capsules
-Speed up
-Gravity
+
+Game Over
 Sound Effects
-Pause
+Speed up
+(4) Pause
+(5) --Save Capsule
+(6) --Preview one capsule
+(7) --Preview four capsules
+(8) --Gravity
 Draw Dr. Mario and the viruses on the side panels
 Powerup? Increment v0 instead of setting to 1 then just like have the next pill be a bomb or something??
 
