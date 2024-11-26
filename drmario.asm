@@ -189,6 +189,12 @@ generate_pill:
     la $v1, ($t2)
     j end_function
 keyboard_input:
+    li $a0, 60
+    li $a1, 50
+    li $a2, 72
+    li $a3, 80
+    li $v0, 31
+    syscall
     lw $a0, 4($t0)              # Load second word from keyboard
     beq $a0, 0x71, quit     	# Check if the key q was pressed
     beq $a0, 97, left 		#if a pressed
@@ -201,6 +207,12 @@ keyboard_input:
     #syscall
     j game_loop
 show_pause:
+    li $a0, 50
+    li $a1, 200
+    li $a2, 112
+    li $a3, 127
+    li $v0, 31
+    syscall
      lw $a0, ADDR_DSPL # $a0, where to draw (MAKE SURE ARRAY IS A RECTANGLE)
      addi $a0, $a0, 3904
      la $a1, paused # $a1, memory location of array
@@ -440,7 +452,7 @@ collided_down:
 	
 clear_blocks:
 	#clear rows, and columns, then call drop_blocks if $v0 is not 0 (meaning it cleared something)
-	li $v0, 0
+	li $v1, 0
 	li $t5, 16
 	lw $t6, ADDR_DSPL
 	addi $t6, $t6, 12908
@@ -459,7 +471,7 @@ clear_blocks:
 	jal check_col
 	addi $t6, $t6, 4
 	bnez $t5, c_cols
-	bnez $v0, drop_blocks
+	bnez $v1, drop_blocks
 	j new_pill
 
 	
@@ -580,7 +592,7 @@ check_row:
 	la $a0, ($t3)
 	j check_row
 	clear_row:
-	li $v0, 1
+	li $v1, 1
 	beq $t2, $t1, c_row #loop it again if the next color is the same
 	addi $t3, $t3, -4 #update location to be cleared
 	addi $t0, $t0, -1 #decrement counter
@@ -592,6 +604,12 @@ check_row:
 	sw $t4, board($t4)
 	sw $zero, board($t7)
 	bgtz $t0, clear_row
+	li $a0, 50
+    	li $a1, 1000
+    	li $a2, 112
+    	li $a3, 127
+    	li $v0, 31
+    	syscall
 	j end_function
 
 
@@ -612,7 +630,7 @@ check_col:
 	la $a0, ($t3)
 	j check_col
 	clear_col:
-	li $v0, 1
+	li $v1, 1
 	beq $t2, $t1, c_col #loop it again if the next color is the same
 	addi $t3, $t3, -256 #update location to be cleared
 	addi $t0, $t0, -1 #decrement counter
@@ -624,6 +642,12 @@ check_col:
 	sw $t4, board($t4)
 	sw $zero, board($t7)
 	bgtz $t0, clear_col
+	li $a0, 50
+    	li $a1, 1000
+    	li $a2, 112
+    	li $a3, 127
+    	li $v0, 31
+    	syscall
 	j end_function
 
 
@@ -695,6 +719,12 @@ clear_gg:
     li $v0 , 32
     li $a0 , 500
     syscall
+    li $a0, 58
+    li $a1, 500
+    li $a2, 112
+    li $a3, 127
+    li $v0, 31
+    syscall
      lw $a0, ADDR_DSPL # $a0, where to draw (MAKE SURE ARRAY IS A RECTANGLE)
      addi $a0, $a0, 9556
      la $a1, gameover # $a1, memory location of array
@@ -703,8 +733,15 @@ clear_gg:
      li $v0, 0 # $v0, output for "recursion"	
      li $v1, 0
     jal draw_array
+    
     li $v0 , 32
     li $a0 , 250
+    syscall
+    li $a0, 50
+    li $a1, 500
+    li $a2, 112
+    li $a3, 127
+    li $v0, 31
     syscall
     j show_gg
 gg:
