@@ -1,0 +1,11 @@
+Save Capsule
+Preview one capsule
+Preview four capsules
+Speed up
+Gravity
+Sound Effects
+Pause
+Draw Dr. Mario and the viruses on the side panels
+Powerup? Increment v0 instead of setting to 1 then just like have the next pill be a bomb or something??
+
+
