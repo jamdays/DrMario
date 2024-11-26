@@ -1,8 +1,8 @@
 
-Game Over
 Sound Effects
 Speed up
-(4) Pause
+(3) --Game Over
+(4) --Pause
 (5) --Save Capsule
 (6) --Preview one capsule
 (7) --Preview four capsules

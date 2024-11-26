@@ -2,7 +2,7 @@
 # Example: Keyboard Input
 #
 # This file demonstrates how to read the keyboard to check if the keyboard
-# key q was pressed.(99 = c) (112 =p)
+# key q was pressed.(99 = c) (112 =p) (114=r)
 ##############################################################################
     .data
 ADDR_KBRD:

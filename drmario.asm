@@ -202,7 +202,7 @@ keyboard_input:
     j game_loop
 show_pause:
      lw $a0, ADDR_DSPL # $a0, where to draw (MAKE SURE ARRAY IS A RECTANGLE)
-     addi $a0, $a0, 1368
+     addi $a0, $a0, 3904
      la $a1, paused # $a1, memory location of array
      li $a2, 29 # $a2, width of array
      li $a3, 145 # $a3, length of array
@@ -217,7 +217,7 @@ pause:
     lw $a0, 4($t0)              # Load second word from keyboard
     bne $a0, 112, pause
     lw $a0, ADDR_DSPL # $a0, where to draw (MAKE SURE ARRAY IS A RECTANGLE)
-    addi $a0, $a0, 1368
+    addi $a0, $a0, 3904
     la $a1, paused # $a1, memory location of array
     li $a2, 29 # $a2, width of array
     li $a3, 145 # $a3, length of array
@@ -668,8 +668,8 @@ draw_array:
 	lw $t0, ($a1)
 	beqz $t0, da_continue
 	la $t0, ($v1)
-	da_continue:
 	sw $t0, ($a0)
+	da_continue:
 	addi $a1, $a1, 4
 	addi $a0, $a0, 4
 	addi $v0, $v0, 1
@@ -681,6 +681,48 @@ draw_array:
 	sub $a0, $a0, $t0
 	bnez $a3, draw_array
 	jr $ra
+show_gg:
+     lw $a0, ADDR_DSPL # $a0, where to draw (MAKE SURE ARRAY IS A RECTANGLE)
+     addi $a0, $a0, 9556
+     la $a1, gameover # $a1, memory location of array
+     li $a2, 20 # $a2, width of array
+     li $a3, 220 # $a3, length of array
+     li $v0, 0 # $v0, output for "recursion"	
+     li $v1, 0xffffff
+    jal draw_array
+    j gg
+clear_gg:
+    li $v0 , 32
+    li $a0 , 500
+    syscall
+     lw $a0, ADDR_DSPL # $a0, where to draw (MAKE SURE ARRAY IS A RECTANGLE)
+     addi $a0, $a0, 9556
+     la $a1, gameover # $a1, memory location of array
+     li $a2, 20 # $a2, width of array
+     li $a3, 220 # $a3, length of array
+     li $v0, 0 # $v0, output for "recursion"	
+     li $v1, 0
+    jal draw_array
+    li $v0 , 32
+    li $a0 , 250
+    syscall
+    j show_gg
+gg:
+	
+    lw $t0, ADDR_KBRD               # $t0 = base address for keyboard
+    lw $t8, 0($t0)                  # Load first word from keyboard
+    bne $t8, 1, clear_gg       # If first word 1, key is pressed
+    lw $a0, 4($t0)              # Load second word from keyboard
+    bne $a0, 114, clear_gg #continues to erase all if p is pressed
+erase_all:
+	lw $t1, ADDR_DSPL
+	li $t0, 4096
+	ea_loop:
+	sw, $zero, ($t1)
+	addi, $t1, $t1, 4
+	addi $t0, $t0, -1
+	bnez $t0, ea_loop
+	beqz $t0, main
 	
 # $a0, location of first half
 # $a1, location of second half
@@ -689,9 +731,9 @@ draw_array:
 #uses t0
 draw_pill:
 	lw $t0, ($a0) #quit if there is color at either a0 or a1 
-	bnez $t0, quit  
+	bnez $t0, show_gg  
 	lw $t1, ($a0)
-	bnez $t0, quit
+	bnez $t0, show_gg
 	sw $a2, ($a0)
 	sw $a3, ($a1)
 	
