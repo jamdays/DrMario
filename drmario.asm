@@ -32,8 +32,10 @@ white: .word 0xffffff
 colors: .word 0xff8ad4, 0xffb152, 0xffffff
 viruses: .word 0xee79c3, 0xeea041, 0xeeeeee
 pill:.space 8
+nextpill: .space 8
+savedpill: .space 8
 ispill: .word 1 #if this is 1 we are dropping the pill (otherwise something is dropping cause of connect)
-gameloop: .word 0
+loops: .word 60
 rotati:  .word 252
 board: .space 16834
 
@@ -79,7 +81,78 @@ main:
     li $a1, 3
     jal draw_up
     #done drawing bottle
+    #draw saved pill plate now
+    addi $a0, $a0, 1040
+    addi $t3, $a0, 4
+    sw $t3, savedpill
+    addi $t4, $t3, 4
+    sw $t4, savedpill+4
+    li $a1, 1
+    jal draw_down
+    li $a1, 3
+    jal draw_right
+    li $a1, 2
+    jal draw_up
     
+    #draw pill hole now
+    addi $a0, $a0, 8  # 8 cols right and 4 rows down
+    addi $t3, $a0, 4
+    sw $t3, nextpill
+    addi $t4, $t3, 4
+    sw $t4, nextpill+4
+    li $a1, 9
+    jal draw_down
+    li $a1, 3
+    jal draw_right
+    li $a1, 10
+    jal draw_up
+    addi $a0, $a0, 4
+    li $a1, 3
+    jal draw_right
+    #drew pill hole
+    li $t5, 5
+    create_pill_queue:
+    jal generate_pill
+    sw $v0, ($t3)
+    sw $v1, ($t4)
+    addi $t3, $t3, 512
+    addi $t4, $t4, 512
+    addi $t5, $t5, -1
+    bgtz $t5, create_pill_queue
+    jal generate_pill
+    lw $a0, ADDR_DSPL
+    addi $a0, $a0, 8568 # 256*30 + 4*30
+    addi $a1, $a0, 4
+    add $a2, $v0, $zero
+    add $a3, $v1, $zero
+    jal draw_pill
+    #current pill pos set to t6, t7
+    sw $a0, pill
+    sw $a1, pill+4
+    li $a2, 4
+    jal draw_viruses
+
+
+       
+game_loop:
+    lw $t0, ADDR_KBRD               # $t0 = base address for keyboard
+    lw $t8, 0($t0)                  # Load first word from keyboard
+    beq $t8, 1, keyboard_input      # If first word 1, key is pressed
+    #lw $t1, loops
+    #addi $t1, $t1, -1
+    #sw $t1, loops #update loops
+    #beqz $t1, gravity
+    #li $v0 , 32 	#rest for 1/60 of a second
+    #li $a0 , 17
+    #syscall
+    j game_loop
+ 
+gravity:
+	li $t1, 60
+	sw $t1, loops
+	j down
+#no inputs, v0, v1 have the colors
+generate_pill:
     li $v0, 42 #generate random number for color
     li $a0, 0
     li $a1, 3
@@ -92,37 +165,9 @@ main:
     syscall
     sll $t0, $a0, 2
     lw $t2 colors($t0)
-    lw $a0, ADDR_DSPL
-    addi $a0, $a0, 8568 # 256*30 + 4*30
-    addi $a1, $a0, 4
-    add $a2, $t1, $zero
-    add $a3, $t2, $zero
-    jal draw_pill
-    #current pill pos set to t6, t7
-    sw $a0, pill
-    sw $a1, pill+4
-    li $a2, 4
-    jal draw_viruses
-    
-    
-game_loop:
-    lw $t0, ADDR_KBRD               # $t0 = base address for keyboard
-    lw $t8, 0($t0)                  # Load first word from keyboard
-    beq $t8, 1, keyboard_input      # If first word 1, key is pressed
-    # 2a. Check for collisions
-	# 2b. Update locations (capsules)	
-	# 3. Draw the screen
-	# 4. Sleep
-
-    # 5. Go back to Step
-    #lw $t0, ADDR_DSPL
-    #addi $a0, $t0, 12908 #top left corner of jar (8812) + 16*256 = 12908 (bottom left corner)
-    #jal check_row
-    #lw $t0, ADDR_DSPL
-    #addi $a0, $t0, 8812 #top left corner of jar (8812)
-    #jal check_col
-    j game_loop
-    
+    la $v0, ($t1)
+    la $v1, ($t2)
+    j end_function
 keyboard_input:
     lw $a0, 4($t0)              # Load second word from keyboard
     beq $a0, 0x71, quit     	# Check if the key q was pressed
@@ -130,8 +175,8 @@ keyboard_input:
     beq $a0, 115, down 		#if s pressed
     beq $a0, 100, right 	#if d pressed
     beq $a0, 119, rotate 	#if w pressed
-    li $v0, 1                   # ask system to print $a0
-    syscall
+    #li $v0, 1                   # ask system to print $a0
+    #syscall
     j game_loop
 #uses $t0-$t4
 left:
@@ -330,8 +375,8 @@ clear_blocks:
 
 	
 	
-#lines 64 - 89 for drawing lines (USES t0, t1)
-# $a0, starting register
+#draw_right-draw_pixels for drawing lines (USES t0, t1)
+# $a0, starting register (for draw_right - draw_up)
 # $a1, length of line
 # $a2, color
 draw_right:
@@ -339,30 +384,17 @@ draw_right:
 	add $t1, $a0, $t0 #add to find ending register 
 	li, $a1, 4 #draw_pixels will update register by 4 (a1 is not needed anymore)
 	j draw_pixels
-	
-
-# $a0, starting register
-# $a1, length of line
-# $a2, color
 draw_down:
 	sll $t0, $a1, 8 # multiply $a1 by 256 (sll 8) for branch condition
 	add $t1, $a0, $t0 # add to find the ending register
 	li $a1, 256  # draw_pixels will update register by 256 (a1 is not needed anymore)
 	j draw_pixels # loop
 
-# $a0, starting register
-# $a1, length of line
-# $a2, color
 draw_left:
 	sll $t0, $a1, 2  #multiply $a1 by 4 (sll 2) for branch condition
 	sub $t1, $a0, $t0 #add to find ending register 
 	li, $a1, -4 #draw_pixels will update register by 4 (a1 is not needed anymore)
 	j draw_pixels
-	
-
-# $a0, starting register
-# $a1, length of line
-# $a2, color
 draw_up:
 	sll $t0, $a1, 8 #multiply $a1 by 256 (sll 8) for branch condition
         sub $t1, $a0, $t0 # add to find the ending register
@@ -371,16 +403,7 @@ draw_up:
 	
 # $a1, how much to update the register by
 draw_pixels: #loop
-	beq $t1, $a0, end_function  #end loop if register = starting register + 4*a1
-	
-	#re index so that $t2 has the address in terms of the board
-	#lw $t2, ADDR_DSPL 
-	#sub $t2, $a0, $t2
-	#lw $t3, board
-	#add $t2, $t3, $t2
-	#li $t3, -1
-	
-	#sw $t3, ($t2) #put -1 at board register 
+	beq $t1, $a0, end_function  #end loop if register = starting register + 4*a1 
 	sw $a2, ($a0) #put color in register
 	add $a0, $a0, $a1 #update register to be drawn
 j draw_pixels
@@ -388,23 +411,13 @@ j draw_pixels
 new_pill:
     li $t0, 1
     sw $t0, ispill
-    li $v0, 42 #generate random number for color
-    li $a0, 0
-    li $a1, 3
-    syscall
-    sll $t0, $a0, 2
-    lw $t1 colors($t0)
-    li $v0, 42 #generate random number for color
-    li $a0, 0
-    li $a1, 3
-    syscall
-    sll $t0, $a0, 2
-    lw $t2 colors($t0)
+    lw $t0, nextpill
+    lw $t1, nextpill+4
     lw $a0, ADDR_DSPL
+    lw $a2, ($t0)
+    lw $a3, ($t1)
     addi $a0, $a0, 8568 # 256*30 + 4*30
     addi $a1, $a0, 4
-    add $a2, $t1, $zero
-    add $a3, $t2, $zero
     jal draw_pill
     #current pill pos set to pill, and pill+4
     sw $a0, pill
@@ -412,6 +425,23 @@ new_pill:
     #reset rotation
     li $t0, 252
     sw $t0, rotati
+    addi $t0, $zero, 4
+    lw $t1, nextpill
+    lw $t2, nextpill+4
+    update_pill_queue:
+    addi $t1, $t1, 512
+    lw $t3, ($t1)
+    sw $t3, -512($t1)
+    addi $t2, $t2, 512
+    lw $t3, ($t2)
+    sw $t3, -512($t2)
+    addi $t0, $t0, -1
+    bgtz $t0, update_pill_queue
+    la $t3, ($t1)
+    la $t4, ($t2)
+    jal generate_pill
+    sw $v0, ($t3)
+    sw $v1, ($t4)
     j game_loop
 
 # $a2, how many viruses	
@@ -536,12 +566,7 @@ drop_blocks:
 	sw $zero, ispill
 	bnez, $t0, down
 	j d_col
-	
-	
-	
-		
-	
-	
+
 # $a0, location of first half
 # $a1, location of second half
 # $a2, the color
