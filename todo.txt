@@ -1,5 +1,5 @@
 
-Sound Effects
+(1) --Sound Effects
 Speed up
 (3) --Game Over
 (4) --Pause

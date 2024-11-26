@@ -29,6 +29,7 @@ blue: .word 0x362880
 pink: .word 0xff8ad4
 orange: .word 0xffb152
 white: .word 0xffffff
+red: .word 0xff0000
 colors: .word 0xff8ad4, 0xffb152, 0xffffff
 viruses: .word 0xee79c3, 0xeea041, 0xeeeeee
 pill:.space 8
@@ -37,6 +38,7 @@ savedpill: .space 8
 ispill: .word 1 #if this is 1 we are dropping the pill (otherwise something is dropping cause of connect)
 kept: .word 0 #this is to check if a pill has already been kept
 loops: .word 60
+loop_max: .word 60
 rotati:  .word 252
 board: .space 16834
 gameover: .word 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1,
@@ -75,6 +77,10 @@ paused: .word 	1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1,
 main:
     # Initialize the game
     # set parameters to draw a bottle
+    sw $zero, kept
+    li $t0, 60
+    sw $t0, loops
+    sw $t0, loop_max
     lw $a0, ADDR_DSPL
     addi $a0, $a0, 7792 # 256*30 + 4*28, (corner of bottle is 7792 - 4*2 + 256*4) (8808)
     li $a1,2
@@ -168,7 +174,7 @@ game_loop:
     j game_loop
  
 gravity:
-	li $t1, 60
+	lw $t1,loop_max 
 	sw $t1, loops
 	j down
 #no inputs, v0, v1 have the colors
@@ -408,6 +414,31 @@ rotate:
 	sw $t0, pill
 	sw $t2, pill+4
 	j game_loop
+#$a0 how much to move by
+move_pill:
+	lw $t0, pill #gets the location of one half of the pill
+	lw $t1, ($t0) #gets the color at that location
+	lw $t2, pill+4 #gets the location of the second half of the pill
+	lw $t3, ($t2) #gets the color at that location
+	#paints old black
+	li $t4, 0 	#loads black into t4
+	sw $t4, ($t0)	#stores black in the bitmap at t0
+	sw $t4, ($t2)	#stores black in the bitmap at t1
+	
+	#new loaction (I am calculating it now because I need to store it later)
+	add $t0, $t0, $a0
+	add $t2, $t2, $a0
+	sw $t1, ($t0)
+	sw $t3, ($t2)
+	
+	#stores new location in pill array 
+	sw $t0, pill
+	sw $t2, pill+4
+	li $v0 , 32
+	li $a0 , 20
+	syscall
+	jr $ra
+	
 
 collided_rotate:
 	sub $t2, $t2, $t5
@@ -431,7 +462,7 @@ collided_down:
 	addi $t2, $t2, -256
 	sw $t1, ($t0)
 	sw $t3, ($t2)
-	
+	beq $t1, 0xff0000, bomb
 	#re index so that $t0 has the address in terms of the board
 	lw $t1, ADDR_DSPL
 	lw $t3, board 
@@ -440,7 +471,7 @@ collided_down:
 	# re index so that $t2 has the other address in terms of the board
 	sub $t2, $t2, $t1
 	#add $t2, $t3, $t2
-	 
+	
 	#store $t0 at t2 and t2 at t0
 	sw  $t2, board($t0)
 	sw $t0, board($t2) 
@@ -449,6 +480,24 @@ collided_down:
  	bnez $t0, clear_blocks
  	beqz $t0, d_col
 	j game_loop
+bomb:
+	li $a0, -4
+	jal move_pill
+	li $a0, -256
+	jal move_pill 
+	li $a0, 512
+	jal move_pill
+	li $a0, 8
+	jal move_pill
+	li $a0, -256
+	jal move_pill
+	li $a0, -256
+	jal move_pill
+	lw  $t0, pill
+	sw $zero, ($t0)
+	lw $t0, pill+4
+	sw $zero, ($t0)
+	j new_pill
 	
 clear_blocks:
 	#clear rows, and columns, then call drop_blocks if $v0 is not 0 (meaning it cleared something)
@@ -515,15 +564,70 @@ new_pill:
     sw $t0, ispill
     lw $t0, nextpill
     lw $t1, nextpill+4
-    lw $a0, ADDR_DSPL
-    lw $a2, ($t0)
-    lw $a3, ($t1)
-    addi $a0, $a0, 8568 # 256*30 + 4*30
-    addi $a1, $a0, 4
-    jal draw_pill
-    #current pill pos set to pill, and pill+4
-    sw $a0, pill
-    sw $a1, pill+4
+    sw $t0, pill
+    sw $t1, pill+4
+    li $a0, -256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+    li $a0, -256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+    li $a0, -256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+    li $a0, -256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+    li $a0, -256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+    li $a0, -256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+    li $a0, -256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+    li $a0, -256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+    li $a0, 256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+    li $a0, 256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+     li $a0, 256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+     li $a0, 256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+    li $a0, 256
+    jal move_pill
+    li $a0, -4
+    jal move_pill
+    li $a0, 256
+    jal move_pill
+    li $a0, 256
+    jal move_pill
+    li $a0, 256
+    jal move_pill
+    lw $t0, pill
+    addi $t0, $t0, 256
+    lw $t0 ($t0)
+    bnez $t0, show_gg
     #reset rotation
     li $t0, 252
     sw $t0, rotati
@@ -588,12 +692,16 @@ check_row:
 	beq $t2, 0x97bdcc, end_function	#if the next guy is the wall then end function
 	beqz $t1, move_on_check_row #if the next color is 0 move on
 	beq $t2, $t1, c_row #loop it again if the next color is the same
+	addi $t7, $t1, -0x111111
+	beq $t7, $t2, c_row #loop it again if the next color is the virus
 	move_on_check_row:
 	la $a0, ($t3)
 	j check_row
 	clear_row:
-	li $v1, 1
+	addi $v1, $v1, 1
 	beq $t2, $t1, c_row #loop it again if the next color is the same
+	addi $t7, $t1, -0x111111
+	beq $t7, $t2, c_row #loop it again if the next color is the virus
 	addi $t3, $t3, -4 #update location to be cleared
 	addi $t0, $t0, -1 #decrement counter
 	sw $zero, ($t3) #store black
@@ -626,12 +734,16 @@ check_col:
 	beq $t2, 0x97bdcc, end_function	#if the next guy is the wall then end function
 	beqz $t1, move_on_check_col #if the next color is 0 move on
 	beq $t2, $t1, c_col #loop it again if the next color is the same
+	addi $t7, $t1, -0x111111
+	beq $t7, $t2, c_col #loop it again if the next color is the virus
 	move_on_check_col:
 	la $a0, ($t3)
 	j check_col
 	clear_col:
-	li $v1, 1
+	addi $v1, $v1, 1
 	beq $t2, $t1, c_col #loop it again if the next color is the same
+	addi $t7, $t1, -0x111111
+	beq $t7, $t2, c_col #loop it again if the next color is the virus	
 	addi $t3, $t3, -256 #update location to be cleared
 	addi $t0, $t0, -1 #decrement counter
 	sw $zero, ($t3) #store black
@@ -656,6 +768,18 @@ check_col:
 # each pill you see drop it until it collides
 # gg (CAN ONLY USE $t6-t9, because everything elese is used in down)
 drop_blocks:
+	blt $v1, 8, drop_continue
+	lw $t9, red
+	lw $t7, nextpill
+	sw $t9, ($t7)
+	sw $t9, 4($t7)
+	drop_continue:
+	lw $t9, loop_max
+	addi $t7, $t9, -10
+	blez $t7, continue_db
+	addi $t9, $t9, -1
+	sw $t9, loop_max
+	continue_db:
 	li $t9, 20	#initialize counter doesnt matter that it is 20 cause it just checks empty stuff after so fine to overshoot
 	li $t7, 13196 #12908 + 288
 	d_row:		
@@ -753,11 +877,12 @@ gg:
     bne $a0, 114, clear_gg #continues to erase all if p is pressed
 erase_all:
 	lw $t1, ADDR_DSPL
-	li $t0, 4096
+	li $t0, 16384
 	ea_loop:
 	sw, $zero, ($t1)
+	sw, $zero, board($t0)
 	addi, $t1, $t1, 4
-	addi $t0, $t0, -1
+	addi $t0, $t0, -4
 	bnez $t0, ea_loop
 	beqz $t0, main
 	
