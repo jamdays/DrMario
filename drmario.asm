@@ -58,7 +58,20 @@ paused: .word 	1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1,
 		1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1,
 		1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1,
 		1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0,
-		
+drmario: .word  0, 0, 0, 0, 5, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 5, 5, 0, 2, 3, 4, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 6, 6, 5, 5, 0, 2, 3, 4, 5, 5, 0, 0, 7, 7, 7, 0, 0, 0, 0,
+                6, 8, 5, 5, 5, 4, 3, 3, 4, 5, 5, 0, 7, 1, 1, 9, 7, 0, 1, 1,
+                6, 2, 2, 5, 5, 0, 0, 3, 4, 5, 5, 7, 9, 9, 9, 9, 7, 1, 1, 1,
+                6, 8, 8, 5, 5, 4, 3, 3, 4, 5, 5, 2, 9, 1, 1, 7, 7, 2, 1, 1,
+                6, 8, 8, 5, 5, 0, 0, 3, 4, 5, 4, 2, 7, 1, 1, 7, 7, 1, 1, 1,
+                6, 8, 8, 8, 5, 4, 3, 3, 3, 5, 4, 2, 7, 7, 2, 7, 7, 2, 1, 1,
+                0, 6, 8, 8, 5, 5, 4, 5, 3, 3, 4, 2, 8, 2, 1, 2, 2, 2, 1, 1,
+                0, 6, 8, 8, 8, 5, 5, 5, 5, 4, 2, 8, 8, 2, 1, 1, 1, 2, 1, 1,
+                0, 0, 6, 8, 8, 5, 3, 3, 3, 4, 2, 6, 8, 2, 1, 1, 1, 2, 1, 1,
+                0, 0, 0, 6, 8, 3, 2, 2, 4, 5, 5, 0, 6, 6, 2, 2, 2, 1, 1, 1
+               # 0, 0, 0, 0, 6, 6, 3, 4, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+               # 0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  
 		  
 
 ##############################################################################
@@ -157,6 +170,14 @@ main:
     sw $a1, pill+4
     li $a2, 4
     jal draw_viruses
+    lw $a0, ADDR_DSPL
+    addi $a0, $a0, 13644
+    la $a1, drmario # $a1, memory location of array
+    li $a2, 20 # $a2, width of array
+    li $a3, 280 # $a3, length of array
+    li $v0, 0 # $v0, output for "recursion"
+    li $v1, 1 # $v1, so it isnt clearing
+    jal draw_array
 
 
        
@@ -164,13 +185,13 @@ game_loop:
     lw $t0, ADDR_KBRD               # $t0 = base address for keyboard
     lw $t8, 0($t0)                  # Load first word from keyboard
     beq $t8, 1, keyboard_input      # If first word 1, key is pressed
-    #lw $t1, loops
-    #addi $t1, $t1, -1
-    #sw $t1, loops #update loops
-    #beqz $t1, gravity
-    #li $v0 , 32 	#rest for 1/60 of a second
-    #li $a0 , 17
-    #syscall
+    lw $t1, loops
+    addi $t1, $t1, -1
+    sw $t1, loops #update loops
+    beqz $t1, gravity
+    li $v0 , 32 	#rest for 1/60 of a second
+    li $a0 , 17
+    syscall
     j game_loop
  
 gravity:
@@ -424,6 +445,14 @@ move_pill:
 	li $t4, 0 	#loads black into t4
 	sw $t4, ($t0)	#stores black in the bitmap at t0
 	sw $t4, ($t2)	#stores black in the bitmap at t1
+	#since I use this for bomb also delete the storage
+	lw $t4, ADDR_DSPL
+	sub $t0, $t0, $t4
+	sub $t2, $t2, $t4
+	sw $zero, board($t0)
+	sw $zero, board($t2)
+	add $t0, $t0, $t4
+	add $t2, $t2, $t4
 	
 	#new loaction (I am calculating it now because I need to store it later)
 	add $t0, $t0, $a0
@@ -463,6 +492,7 @@ collided_down:
 	sw $t1, ($t0)
 	sw $t3, ($t2)
 	beq $t1, 0xff0000, bomb
+	beq $t1, 0x00ff00, bigbomb
 	#re index so that $t0 has the address in terms of the board
 	lw $t1, ADDR_DSPL
 	lw $t3, board 
@@ -498,7 +528,49 @@ bomb:
 	lw $t0, pill+4
 	sw $zero, ($t0)
 	j new_pill
+bigbomb:
+	li $a0, -8
+	jal move_pill
+	li $a0, -512
+	jal move_pill 
+	li $a0, 256
+	jal move_pill
+	li $a0, 256
+	jal move_pill
+	li $a0, 256
+	jal move_pill
+	li $a0, 256
+	jal move_pill
 	
+	li $a0, 8
+	jal move_pill
+	li $a0, -256
+	jal move_pill 
+	li $a0, -256
+	jal move_pill
+	li $a0, -256
+	jal move_pill
+	li $a0, -256
+	jal move_pill
+	li $a0, -256
+	jal move_pill
+	
+	li $a0, 8
+	jal move_pill
+	li $a0, 256
+	jal move_pill 
+	li $a0, 256
+	jal move_pill
+	li $a0, 256
+	jal move_pill
+	li $a0, 256
+	jal move_pill
+	li $a0, 256
+	jal move_pill
+	sw $zero, ($t0)
+	lw $t0, pill+4
+	sw $zero, ($t0)
+	j new_pill
 clear_blocks:
 	#clear rows, and columns, then call drop_blocks if $v0 is not 0 (meaning it cleared something)
 	li $v1, 0
@@ -769,15 +841,22 @@ check_col:
 # gg (CAN ONLY USE $t6-t9, because everything elese is used in down)
 drop_blocks:
 	blt $v1, 8, drop_continue
-	lw $t9, red
 	lw $t7, nextpill
+	lw $t9, ($t7)
+	beq $t9, 0xff0000, make_bigbomb
+	lw $t9, red
+	sw $t9, ($t7)
+	sw $t9, 4($t7)
+	j drop_continue
+	make_bigbomb:
+	li $t9, 0x00ff00
 	sw $t9, ($t7)
 	sw $t9, 4($t7)
 	drop_continue:
 	lw $t9, loop_max
 	addi $t7, $t9, -10
 	blez $t7, continue_db
-	addi $t9, $t9, -1
+	addi $t9, $t9, -30
 	sw $t9, loop_max
 	continue_db:
 	li $t9, 20	#initialize counter doesnt matter that it is 20 cause it just checks empty stuff after so fine to overshoot
@@ -815,8 +894,30 @@ draw_array:
 	addi $a3, $a3, -1
 	lw $t0, ($a1)
 	beqz $t0, da_continue
-	la $t0, ($v1)
-	sw $t0, ($a0)
+	li $t1, 0
+	beqz $v1, dac_continue
+	li $t1, 0xffffff
+	beq $t0, 1, dac_continue
+	li $t1, 0x592f04
+	beq $t0, 2, dac_continue
+	li $t1, 0xf5d1ab
+	beq $t0, 3, dac_continue
+	li $t1, 0xf7c1b7
+	beq $t0, 4, dac_continue
+	li $t1, 0x70472a
+	beq $t0, 5, dac_continue
+	li $t1, 0xb51907
+	beq $t0, 6, dac_continue
+	li $t1, 0x2494d1
+	beq $t0, 7, dac_continue
+	li $t1, 0xd4556a
+	beq $t0, 8, dac_continue
+	li $t1, 0x42d6ed
+	beq $t0, 9, dac_continue
+	
+	dac_continue:
+	sw $t1, ($a0)
+	
 	da_continue:
 	addi $a1, $a1, 4
 	addi $a0, $a0, 4
